@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- ✅ 内容安全策略 -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
+  <title>简易记账本</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .header {
+      text-align: center;
+      color: white;
+      margin-bottom: 30px;
+    }
+    .header h1 { font-size: 2.5em; margin-bottom: 10px; }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    .summary-card {
+      background: white;
+      border-radius: 15px;
+      padding: 25px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    .summary-card.income { border-left: 5px solid #10b981; }
+    .summary-card.expense { border-left: 5px solid #ef4444; }
+    .summary-card.balance { border-left: 5px solid #3b82f6; }
+    .summary-card h3 { color: #6b7280; font-size: 0.9em; margin-bottom: 10px; }
+    .summary-card .amount { font-size: 2em; font-weight: bold; }
+    .income .amount { color: #10b981; }
+    .expense .amount { color: #ef4444; }
+    .balance .amount { color: #3b82f6; }
+    
+    .main-content {
+      display: grid;
+      grid-template-columns: 1fr 400px;
+      gap: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 15px;
+      padding: 25px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    .card h2 {
+      color: #1f2937;
+      margin-bottom: 20px;
+      padding-bottom: 15px;
+      border-bottom: 2px solid #f3f4f6;
+    }
+    
+    .form-group { margin-bottom: 15px; }
+    .form-group label {
+      display: block;
+      color: #374151;
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 12px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      font-size: 1em;
+      transition: border-color 0.3s;
+    }
+    .form-group input:focus, .form-group select:focus {
+      outline: none;
+      border-color: #667eea;
+    }
+    .type-selector {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .type-btn {
+      flex: 1;
+      padding: 12px;
+      border: 2px solid #e5e7eb;
+      border-radius: 8px;
+      background: white;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s;
+    }
+    .type-btn.income.active {
+      background: #10b981;
+      color: white;
+      border-color: #10b981;
+    }
+    .type-btn.expense.active {
+      background: #ef4444;
+      color: white;
+      border-color: #ef4444;
+    }
+    .submit-btn {
+      width: 100%;
+      padding: 15px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      font-size: 1.1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .submit-btn:hover { transform: translateY(-2px); }
+    .submit-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .records-list {
+      max-height: 500px;
+      overflow-y: auto;
+    }
+    .record-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px;
+      border-bottom: 1px solid #f3f4f6;
+      transition: background 0.2s;
+    }
+    .record-item:hover { background: #f9fafb; }
+    .record-info { flex: 1; }
+    .record-category {
+      display: inline-block;
+      padding: 4px 10px;
+      background: #f3f4f6;
+      border-radius: 20px;
+      font-size: 0.85em;
+      margin-right: 10px;
+    }
+    .record-date { color: #9ca3af; font-size: 0.85em; }
+    .record-amount {
+      font-size: 1.2em;
+      font-weight: bold;
+    }
+    .record-amount.income { color: #10b981; }
+    .record-amount.expense { color: #ef4444; }
+    .delete-btn {
+      margin-left: 15px;
+      padding: 8px 12px;
+      background: #fee2e2;
+      color: #ef4444;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .delete-btn:hover { background: #fecaca; }
+    
+    .actions {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+    }
+    .action-btn {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .export-btn {
+      background: #3b82f6;
+      color: white;
+    }
+    .export-btn:hover { background: #2563eb; }
+    
+    .month-selector {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+    .month-selector button {
+      padding: 8px 15px;
+      background: #f3f4f6;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .month-selector button:hover { background: #e5e7eb; }
+    .month-selector span { font-weight: 600; color: #1f2937; }
+
+    /* 加载状态 */
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #9ca3af;
+    }
+    .loading::after {
+      content: '';
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid #e5e7eb;
+      border-top-color: #667eea;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-left: 10px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* 错误提示动画 */
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>💰 简易记账本</h1>
+      <p>记录每一笔收支，掌握财务状况</p>
+    </div>
+
+    <div class="summary">
+      <div class="summary-card income">
+        <h3>本月收入</h3>
+        <div class="amount" id="incomeAmount">¥0.00</div>
+      </div>
+      <div class="summary-card expense">
+        <h3>本月支出</h3>
+        <div class="amount" id="expenseAmount">¥0.00</div>
+      </div>
+      <div class="summary-card balance">
+        <h3>本月结余</h3>
+        <div class="amount" id="balanceAmount">¥0.00</div>
+      </div>
+    </div>
+
+    <div class="main-content">
+      <div class="card">
+        <div class="month-selector">
+          <button onclick="changeMonth(-1)" aria-label="上个月">◀ 上月</button>
+          <span id="currentMonth">2026-03</span>
+          <button onclick="changeMonth(1)" aria-label="下个月">下月 ▶</button>
+        </div>
+        <div class="records-list" id="recordsList">
+          <div class="loading">加载中</div>
+        </div>
+        <div class="actions">
+          <button class="action-btn export-btn" onclick="exportData()">📥 导出数据</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>➕ 记一笔</h2>
+        <form id="recordForm">
+          <div class="type-selector">
+            <button type="button" class="type-btn expense active" onclick="selectType('expense')" aria-label="支出">支出</button>
+            <button type="button" class="type-btn income" onclick="selectType('income')" aria-label="收入">收入</button>
+          </div>
+          
+          <div class="form-group">
+            <label for="amount">金额</label>
+            <input type="number" id="amount" step="0.01" min="0.01" max="1000000000" required placeholder="0.00">
+          </div>
+          
+          <div class="form-group">
+            <label for="category">分类</label>
+            <select id="category" required>
+              <!-- 动态加载 -->
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="date">日期</label>
+            <input type="date" id="date" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="note">备注</label>
+            <input type="text" id="note" maxlength="200" placeholder="可选">
+          </div>
+          
+          <button type="submit" class="submit-btn" id="submitBtn">确认记账</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ✅ 使用安全的 electronAPI (通过 preload.js 暴露)
+    // ❌ 不再使用 require('electron')
+    
+    let currentType = 'expense';
+    let currentMonth = new Date().toISOString().slice(0, 7);
+    let isLoading = false;
+
+    // ===== 错误处理 =====
+    
+    // 全局错误捕获
+    window.addEventListener('error', (event) => {
+      console.error('[Global Error]', event.error);
+      showNotification('发生错误', event.error.message, 'error');
+      event.preventDefault();
+    });
+
+    window.addEventListener('unhandledrejection', (event) => {
+      console.error('[Unhandled Rejection]', event.reason);
+      showNotification('异步错误', event.reason.message || '未知错误', 'error');
+      event.preventDefault();
+    });
+
+    // 监听来自主进程的错误
+    if (window.electronAPI && window.electronAPI.onError) {
+      window.electronAPI.onError((error) => {
+        console.error('[IPC Error]', error);
+        showNotification('系统错误', error.message, 'error');
+      });
+    }
+
+    // 错误提示函数
+    function showNotification(title, message, type = 'info') {
+      const colors = {
+        info: '#3b82f6',
+        success: '#10b981',
+        error: '#ef4444',
+        warning: '#f59e0b'
+      };
+      
+      const notification = document.createElement('div');
+      notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 15px 25px;
+        background: white;
+        border-left: 4px solid ${colors[type]};
+        border-radius: 8px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        z-index: 10000;
+        animation: slideIn 0.3s ease;
+        max-width: 400px;
+      `;
+      notification.innerHTML = `
+        <strong>${title}</strong><br>
+        <span style="color: #6b7280; font-size: 0.9em;">${message}</span>
+      `;
+      
+      document.body.appendChild(notification);
+      setTimeout(() => {
+        notification.style.opacity = '0';
+        notification.style.transition = 'opacity 0.3s';
+        setTimeout(() => notification.remove(), 300);
+      }, 5000);
+    }
+
+    // 安全的 API 调用包装器
+    async function safeAPICall(apiFunc, ...args) {
+      try {
+        return await apiFunc(...args);
+      } catch (error) {
+        console.error('[API Error]', error);
+        showNotification('操作失败', error.message, 'error');
+        throw error;
+      }
+    }
+
+    // ===== 业务逻辑 =====
+
+    async function loadCategories() {
+      if (!window.electronAPI) {
+        console.error('[Error] electronAPI not available');
+        showNotification('错误', '无法连接到 Electron API', 'error');
+        return;
+      }
+
+      try {
+        const categories = await safeAPICall(window.electronAPI.getCategories, currentType);
+        const select = document.getElementById('category');
+        select.innerHTML = categories.map(c => 
+          `<option value="${c.name}">${c.icon} ${c.name}</option>`
+        ).join('');
+      } catch (error) {
+        console.error('[loadCategories] Error:', error);
+      }
+    }
+
+    function selectType(type) {
+      currentType = type;
+      document.querySelectorAll('.type-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.classList.contains(type)) btn.classList.add('active');
+      });
+      loadCategories();
+    }
+
+    async function loadRecords() {
+      if (isLoading) return;
+      isLoading = true;
+
+      const list = document.getElementById('recordsList');
+      list.innerHTML = '<div class="loading">加载中</div>';
+
+      try {
+        const records = await safeAPICall(window.electronAPI.getRecords, currentMonth);
+        
+        if (records.length === 0) {
+          list.innerHTML = '<p style="text-align:center;color:#9ca3af;padding:40px;">本月暂无记录</p>';
+          updateSummary([]);
+          return;
+        }
+        
+        list.innerHTML = records.map(r => `
+          <div class="record-item">
+            <div class="record-info">
+              <span class="record-category">${r.category}</span>
+              <span class="record-date">${r.date}</span>
+              ${r.note ? `<span style="color:#9ca3af;margin-left:10px;">${r.note}</span>` : ''}
+            </div>
+            <div class="record-amount ${r.type}">
+              ${r.type === 'income' ? '+' : '-'}¥${r.amount.toFixed(2)}
+            </div>
+            <button class="delete-btn" onclick="deleteRecord(${r.id})" aria-label="删除记录">删除</button>
+          </div>
+        `).join('');
+        
+        updateSummary(records);
+      } catch (error) {
+        list.innerHTML = '<p style="text-align:center;color:#ef4444;padding:40px;">加载失败，请重试</p>';
+      } finally {
+        isLoading = false;
+      }
+    }
+
+    async function updateSummary(records) {
+      const income = records.filter(r => r.type === 'income').reduce((sum, r) => sum + r.amount, 0);
+      const expense = records.filter(r => r.type === 'expense').reduce((sum, r) => sum + r.amount, 0);
+      
+      document.getElementById('incomeAmount').textContent = `¥${income.toFixed(2)}`;
+      document.getElementById('expenseAmount').textContent = `¥${expense.toFixed(2)}`;
+      document.getElementById('balanceAmount').textContent = `¥${(income - expense).toFixed(2)}`;
+    }
+
+    function changeMonth(delta) {
+      const [year, month] = currentMonth.split('-').map(Number);
+      const date = new Date(year, month - 1 + delta, 1);
+      currentMonth = date.toISOString().slice(0, 7);
+      document.getElementById('currentMonth').textContent = currentMonth;
+      loadRecords();
+    }
+
+    async function deleteRecord(id) {
+      if (confirm('确定删除这条记录吗？')) {
+        try {
+          await safeAPICall(window.electronAPI.deleteRecord, id);
+          showNotification('成功', '记录已删除', 'success');
+          loadRecords();
+        } catch (error) {
+          console.error('[deleteRecord] Error:', error);
+        }
+      }
+    }
+
+    async function exportData() {
+      const submitBtn = document.getElementById('submitBtn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = '导出中...';
+
+      try {
+        const filePath = await safeAPICall(window.electronAPI.exportData);
+        showNotification('导出成功', `文件已保存到：${filePath}`, 'success');
+      } catch (error) {
+        console.error('[exportData] Error:', error);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '确认记账';
+      }
+    }
+
+    document.getElementById('recordForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const submitBtn = document.getElementById('submitBtn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = '提交中...';
+
+      try {
+        const record = {
+          type: currentType,
+          amount: parseFloat(document.getElementById('amount').value),
+          category: document.getElementById('category').value,
+          date: document.getElementById('date').value,
+          note: document.getElementById('note').value
+        };
+        
+        await safeAPICall(window.electronAPI.addRecord, record);
+        
+        // 重置表单
+        e.target.reset();
+        document.getElementById('date').value = new Date().toISOString().slice(0, 10);
+        
+        showNotification('成功', '记账成功！', 'success');
+        loadRecords();
+      } catch (error) {
+        console.error('[submit] Error:', error);
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '确认记账';
+      }
+    });
+
+    // ===== 初始化 =====
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('date').value = new Date().toISOString().slice(0, 10);
+      loadCategories();
+      loadRecords();
+    });
+  </script>
+</body>
+</html>
